@@ -1,15 +1,58 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <link rel = "stylesheet" href = "style.css">
-        <Title></Title>
-        <script src = "d3.v7.min.js"></script>
-    </head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mothitor — Antenna Data 2025</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-    <div id = "boards"></div>
+    <h1 class="page-title">Mothitor</h1>
 
-    <div id="buttons"></div>
+    <!-- Three monitor boards -->
+    <div id="boards"></div>
+
+    <!-- Display toggle buttons -->
+    <div class="controls-section">
+        <div class="control-group">
+            <span class="control-label">Display</span>
+            <div id="display-buttons" class="button-row">
+                <button class="toggle-btn active" data-display="species">Species</button>
+                <button class="toggle-btn" data-display="genus">Genus</button>
+                <button class="toggle-btn" data-display="family">Family</button>
+            </div>
+        </div>
+
+        <!-- Time filter: by month or by season -->
+        <div class="control-group time-group">
+            <div class="time-block">
+                <span class="control-label">By Month</span>
+                <div id="month-buttons" class="button-row">
+                    <button class="toggle-btn time-btn active" data-month="Apr">Apr</button>
+                    <button class="toggle-btn time-btn active" data-month="May">May</button>
+                    <button class="toggle-btn time-btn active" data-month="Jun">Jun</button>
+                    <button class="toggle-btn time-btn active" data-month="Jul">Jul</button>
+                    <button class="toggle-btn time-btn active" data-month="Aug">Aug</button>
+                    <button class="toggle-btn time-btn active" data-month="Sep">Sep</button>
+                    <button class="toggle-btn time-btn active" data-month="Oct">Oct</button>
+                </div>
+            </div>
+            <span class="or-label">OR</span>
+            <div class="time-block">
+                <span class="control-label">By Season</span>
+                <div id="season-buttons" class="button-row">
+                    <button class="toggle-btn season-btn" data-season="spring">Spring</button>
+                    <button class="toggle-btn season-btn" data-season="summer">Summer</button>
+                    <button class="toggle-btn season-btn" data-season="fall">Fall</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div id="legend"></div>
 
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="index.js"></script>    
+    <script src="index.js"></script>
+</body>
 </html>
