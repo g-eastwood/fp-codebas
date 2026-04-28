@@ -1,8 +1,4 @@
-// ── Mothitor Antenna Data 2025 ──────────────────────────────────────────────
-// Matches the sketch: 3 monitor boards (dot plots), display buttons
-// (Species / Genus / Family), month & season filters, and a legend.
-
-// ── Seasons ─────────────────────────────────────────────────────────────────
+// Mothitor antenna data vis tab options:
 const SEASONS = {
     spring: ["Apr", "May"],
     summer: ["Jun", "Jul", "Aug"],
@@ -12,14 +8,13 @@ const SEASONS = {
 const ALL_MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 const DEPLOYMENTS = ["SYD", "AMA", "CAR"];
 
-// ── State ────────────────────────────────────────────────────────────────────
 let state = {
-    displayMode: "species",          // "species" | "genus" | "family"
+    displayMode: "species",          
     activeMonths: new Set(ALL_MONTHS),
-    highlightedGroup: null           // for legend hover
+    highlightedGroup: null           
 };
 
-// ── Colour palette (up to ~30 distinct groups) ───────────────────────────────
+// color codes for species groups
 const COLOR_PALETTE = [
     "#6baed6","#2ca25f","#756bb1","#fd8d3c","#e377c2","#17becf",
     "#bcbd22","#9467bd","#8c564b","#e7ba52","#cedb9c","#9edae5",
@@ -28,7 +23,7 @@ const COLOR_PALETTE = [
     "#636363","#a1d99b","#fdae6b","#9ecae1","#bcbddc","#bdbdbd"
 ];
 
-let colorMap = {};  // groupName → color
+let colorMap = {};  
 
 function getColor(name) {
     if (!colorMap[name]) {
@@ -38,10 +33,10 @@ function getColor(name) {
     return colorMap[name];
 }
 
-// ── Data loading ─────────────────────────────────────────────────────────────
+// loading data
 d3.json("mothitor_antenna_data_2025.json").then(rawData => {
 
-    // Pre-process: aggregate counts per deployment / month / species (+taxonomy)
+    // summing by species/genus/family, group by month and deployment for display
     const aggMap = new Map();
 
     rawData.forEach(item => {
@@ -67,23 +62,21 @@ d3.json("mothitor_antenna_data_2025.json").then(rawData => {
 
     const allRecords = Array.from(aggMap.values());
 
-    // ── Build legend colour map up-front (by species) ────────────────────────
+    // setting colors for species
     const allSpecies = [...new Set(allRecords.map(d => d.species))].sort();
     allSpecies.forEach(s => getColor(s));
 
-    // ── Render everything ─────────────────────────────────────────────────────
     renderBoards(allRecords);
     renderLegend(allRecords);
     setupControls(allRecords);
 
-    // ── Tooltip div ───────────────────────────────────────────────────────────
     d3.select("body").append("div").attr("id", "tooltip");
 
 }).catch(err => {
     document.body.innerHTML += `<p style="color:red">Error loading data: ${err}</p>`;
 });
 
-// ── BOARDS ───────────────────────────────────────────────────────────────────
+// creating boards for vis
 function renderBoards(allRecords) {
     const container = d3.select("#boards");
     container.selectAll(".board-card").remove();
@@ -111,15 +104,12 @@ function drawBoard(dep, allRecords) {
     const container = d3.select(`#svg-container-${dep}`);
     container.selectAll("*").remove();
 
-    // Filter records for this board
     const records = allRecords.filter(d =>
         d.dep === dep && state.activeMonths.has(d.month)
     );
 
-    // Group by display mode
     const groupKey = d => d[state.displayMode];
 
-    // Aggregate counts per group
     const groupMap = d3.rollup(records, v => d3.mean(v, d => d.count), groupKey);
     const groups = Array.from(groupMap, ([name, avg]) => ({ name, avg }))
                         .sort((a, b) => b.avg - a.avg);
@@ -130,7 +120,8 @@ function drawBoard(dep, allRecords) {
         return;
     }
 
-    // Dimensions
+
+// box dimensions
     const W = 340, H = 320;
     const margin = { top: 16, right: 20, bottom: 40, left: 56 };
     const innerW = W - margin.left - margin.right;
@@ -143,28 +134,24 @@ function drawBoard(dep, allRecords) {
     const g = svg.append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Scales
+    // scalles
     const maxAvg = d3.max(groups, d => d.avg);
     const yScale = d3.scaleLinear()
         .domain([0, maxAvg * 1.1])
         .range([innerH, 0])
         .nice();
-
-    // X: jitter dots in a single strip per group (strip chart / dot plot)
-    // We use groups as categories on x-axis, one dot per group
     const xScale = d3.scaleBand()
         .domain(groups.map(d => d.name))
         .range([0, innerW])
-        .padding(0.4);
+        .padding(0.5);
 
-    // Y axis
+    // y
     g.append("g")
         .attr("class", "axis")
         .call(d3.axisLeft(yScale).ticks(5).tickSize(-innerW))
         .call(ax => ax.select(".domain").remove())
         .call(ax => ax.selectAll(".tick line").attr("stroke", "#eee"));
 
-    // Y axis label
     g.append("text")
         .attr("transform", "rotate(-90)")
         .attr("y", -margin.left + 10)
@@ -197,7 +184,7 @@ function drawBoard(dep, allRecords) {
             tooltip.style("display", "none");
         });
 
-    // Bottom label: count of taxa shown
+    // x labels
     g.append("text")
         .attr("x", innerW / 2)
         .attr("y", innerH + 30)
@@ -206,9 +193,7 @@ function drawBoard(dep, allRecords) {
         .attr("fill", "#999")
         .text(`${groups.length} taxa shown`);
 }
-
-// ── Color helpers ─────────────────────────────────────────────────────────────
-// When display mode changes we want stable, consistent colors per group name
+// color assignment for groups (species/genus/family)
 const groupColorCache = {};
 
 function getGroupColor(name) {
@@ -224,7 +209,7 @@ function dotOpacity(name) {
     return name === state.highlightedGroup ? 1 : 0.15;
 }
 
-// ── LEGEND ───────────────────────────────────────────────────────────────────
+// legend
 function renderLegend(allRecords) {
     updateLegend(allRecords);
 }
@@ -235,38 +220,8 @@ function updateLegend(allRecords) {
 
     legendEl.append("div").attr("class", "legend-title")
         .text(`Key — ${state.displayMode} (out of ~${getGroupCount(allRecords)} total)`);
-
-    // Get top 20 groups by total count across all boards
-    const groupKey = d => d[state.displayMode];
-    const filteredRecords = allRecords.filter(d => state.activeMonths.has(d.month));
-    const topGroups = Array.from(
-        d3.rollup(filteredRecords, v => d3.sum(v, d => d.count), groupKey),
-        ([name, total]) => ({ name, total })
-    ).sort((a, b) => b.total - a.total).slice(0, 24);
-
-    topGroups.forEach(({ name }) => {
-        const item = legendEl.append("div")
-            .attr("class", "legend-item")
-            .style("cursor", "pointer")
-            .on("mouseover", () => {
-                state.highlightedGroup = name;
-                refreshDots();
-                legendEl.selectAll(".legend-item").classed("dimmed",
-                    (_, i, nodes) => d3.select(nodes[i]).datum()?.name !== name
-                );
-            })
-            .on("mouseleave", () => {
-                state.highlightedGroup = null;
-                refreshDots();
-                legendEl.selectAll(".legend-item").classed("dimmed", false);
-            })
-            .datum({ name });
-
-        item.append("div").attr("class", "legend-dot")
-            .style("background", getGroupColor(name));
-        item.append("span").text(name);
-    });
 }
+
 
 function getGroupCount(allRecords) {
     const filteredRecords = allRecords.filter(d => state.activeMonths.has(d.month));
@@ -278,22 +233,22 @@ function refreshDots() {
         .attr("opacity", d => dotOpacity(d.name));
 }
 
-// ── CONTROLS ─────────────────────────────────────────────────────────────────
+// controls
 function setupControls(allRecords) {
 
-    // Display mode buttons (Species / Genus / Family)
+    // buttons
     d3.selectAll("#display-buttons .toggle-btn").on("click", function () {
         state.displayMode = d3.select(this).attr("data-display");
         d3.selectAll("#display-buttons .toggle-btn").classed("active", false);
         d3.select(this).classed("active", true);
         state.highlightedGroup = null;
-        // reset color cache for new mode
+        // color reset
         Object.keys(groupColorCache).forEach(k => delete groupColorCache[k]);
         updateBoards(allRecords);
         updateLegend(allRecords);
     });
 
-    // Month buttons — toggle individual months
+    // month buttons
     d3.selectAll("#month-buttons .toggle-btn").on("click", function () {
         const month = d3.select(this).attr("data-month");
         if (state.activeMonths.has(month)) {
@@ -305,17 +260,13 @@ function setupControls(allRecords) {
             state.activeMonths.add(month);
             d3.select(this).classed("active", true);
         }
-        // Deactivate season buttons (user switched to manual month select)
-        d3.selectAll(".season-btn").classed("active", false);
-        updateBoards(allRecords);
-        updateLegend(allRecords);
-    });
+        });
 
-    // Season buttons — select preset month sets
+    // season buttons
     d3.selectAll(".season-btn").on("click", function () {
         const season = d3.select(this).attr("data-season");
 
-        // Toggle: if already active, deactivate (go back to all months)
+        // activate-deactivate switch
         const isActive = d3.select(this).classed("active");
         if (isActive) {
             d3.select(this).classed("active", false);
@@ -326,7 +277,6 @@ function setupControls(allRecords) {
             state.activeMonths = new Set(SEASONS[season]);
         }
 
-        // Sync month button highlights
         d3.selectAll("#month-buttons .toggle-btn").classed("active",
             function () { return state.activeMonths.has(d3.select(this).attr("data-month")); }
         );
